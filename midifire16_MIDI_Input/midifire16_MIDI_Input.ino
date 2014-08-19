@@ -5,6 +5,8 @@
 #define PWM_MAX 4095
 #define VEL_MAX 127
 
+// midifire16 appears as an Arduino Duemilanove w/ ATmega328!
+
 // -----------------------------------------------------------------------------
 void HandleNoteOn(byte channel, byte note, byte velocity)
 {     
@@ -47,7 +49,7 @@ void setup()
   Tlc.clear();
     
   // Explicitly turn off active flames
-  for(int c=0; c<16 ;c++) 
+  for (int c=0; c<16; c++) 
   {
       Tlc.set(c,0);
   }
@@ -56,7 +58,7 @@ void setup()
   // Initiate MIDI communications, listen to all channels
   MIDI.begin(MIDI_CHANNEL_OMNI);    
 
-  // Connect the  functions to the library, 
+  // Connect the functions to the library, 
   MIDI.setHandleNoteOn(HandleNoteOn);    // Put only the name of the function
   MIDI.setHandleNoteOff(HandleNoteOff);  
 }
