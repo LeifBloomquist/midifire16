@@ -1,17 +1,29 @@
+// midifire16 control code
+// Leif Bloomquist, November 29, 2014
+
+// midifire16 appears as an Arduino Duemilanove w/ ATmega328!
+
 #include <MIDI.h>
 #include <Tlc5940.h>
+#include <elapsedMillis.h>
 
 #define MY_CHANNEL 1     // MIDI Channel (starting from 1)
 #define PWM_MAX 4095
 #define VEL_MAX 127
 
-// midifire16 appears as an Arduino Duemilanove w/ ATmega328!
+#define TIMEOUT 4000    // milliseconds
+
+#define NUM_OUTPUTS 16
+
+elapsedMillis timeElapsed[NUM_OUTPUTS];
+
 
 // -----------------------------------------------------------------------------
 void HandleNoteOn(byte channel, byte note, byte velocity)
 {     
     // Filter on our channel
     if (channel != MY_CHANNEL) return;
+    if (note >= NUM_OUTPUTS) return;
     
     if (velocity == 0)
     {
@@ -19,6 +31,9 @@ void HandleNoteOn(byte channel, byte note, byte velocity)
         TurnOutputOff(note);        
         return;
     }
+    
+    // Restart the timer for this output
+    timeElapsed[note]=0;
     
     int pwm = VelocityToPWM(velocity);
     Tlc.set(note,pwm);
@@ -30,6 +45,7 @@ void HandleNoteOff(byte channel, byte note, byte velocity)
 {
     // Filter on our channel
     if (channel != MY_CHANNEL) return;
+    if (note >= NUM_OUTPUTS) return;
     
     TurnOutputOff(note);
 }
@@ -37,21 +53,23 @@ void HandleNoteOff(byte channel, byte note, byte velocity)
 // -----------------------------------------------------------------------------
 void TurnOutputOff(byte num)
 {
+  if (num >= NUM_OUTPUTS) return;
+  
    Tlc.set(num,0);
    Tlc.update(); 
 }
-
 
 // -----------------------------------------------------------------------------
 void setup() 
 {
   Tlc.init();
   Tlc.clear();
-    
-  // Explicitly turn off active flames
-  for (int c=0; c<16; c++) 
+
+  // Explicitly turn off active flames and reset timers
+  for (byte c=0; c<NUM_OUTPUTS; c++) 
   {
       Tlc.set(c,0);
+      timeElapsed[c]=0;
   }
   Tlc.update();
  
@@ -69,6 +87,9 @@ void loop()
 {  
   // Call MIDI.read the fastest you can for real-time performance.
   MIDI.read();
+  
+  // Check timeouts to prevent stuck outputs.
+  CheckTimeouts();
 } 
 
 
@@ -93,3 +114,14 @@ int VelocityToPWM(int vel)
    
    return pwm;
 }
+
+void CheckTimeouts()
+{
+  for (byte c=0; c<NUM_OUTPUTS; c++) 
+  {
+    if (timeElapsed[c] > TIMEOUT)
+    {
+      TurnOutputOff(c);         
+    }
+  }
+} 
